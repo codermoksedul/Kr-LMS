@@ -7,7 +7,7 @@ jQuery(function($){
 
     // Autocomplete Helper
     function setupSearch(inputSel, dropdownSel, hiddenSel, action) {
-        $(inputSel).on('keyup', function(){
+        $(document).on('keyup', inputSel, function(){
             let term = $(this).val();
             if(term.length < 2) return;
             $.post(ajaxurl, { action, term }, function(res){
