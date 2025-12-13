@@ -85,13 +85,21 @@ class KR_LMS_AJAX {
             wp_send_json_error(['message' => 'Missing required fields']);
         }
 
-        $res = $wpdb->insert($table, [
+        $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+
+        $data = [
             'user_id'   => $user_id,
             'course_id' => $course_id,
             'exam_name' => $exam_name,
             'points'    => $points,
             'date'      => $date
-        ]);
+        ];
+
+        if ($id > 0) {
+            $res = $wpdb->update($table, $data, ['id' => $id]);
+        } else {
+            $res = $wpdb->insert($table, $data);
+        }
 
         if ($res) wp_send_json_success();
         else wp_send_json_error(['message' => 'Database error']);

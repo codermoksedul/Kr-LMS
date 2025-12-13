@@ -367,6 +367,18 @@ class KR_LMS_Admin {
                                 <td><span class="cb-badge"><?php echo $item->points; ?></span></td>
                                 <td><?php echo $item->date; ?></td>
                                 <td style="text-align:right;">
+                                    <button class="cb-action-btn lb-edit-btn" 
+                                        data-id="<?php echo $item->id; ?>"
+                                        data-user-id="<?php echo $item->user_id; ?>"
+                                        data-user-text="<?php echo esc_attr($item->display_name . ' (' . $item->user_email . ')'); ?>"
+                                        data-course-id="<?php echo $item->course_id; ?>"
+                                        data-course-text="<?php echo esc_attr($item->course_title); ?>"
+                                        data-exam="<?php echo esc_attr($item->exam_name); ?>"
+                                        data-points="<?php echo $item->points; ?>"
+                                        data-date="<?php echo $item->date; ?>"
+                                    >
+                                        <span class="dashicons dashicons-edit"></span>
+                                    </button>
                                     <button class="cb-action-btn lb-delete-btn" data-id="<?php echo $item->id; ?>">
                                         <span class="dashicons dashicons-trash"></span>
                                     </button>
@@ -404,6 +416,7 @@ class KR_LMS_Admin {
                     <button id="lb-close" class="cb-close-icon">&times;</button>
                 </div>
                 <div class="cb-modal-body">
+                    <input type="hidden" id="lb-id" value="">
                     <div class="cb-grid-2">
                         <div class="cb-form-group cb-full-width">
                             <label>Student</label>

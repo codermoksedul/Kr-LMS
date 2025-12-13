@@ -109,8 +109,37 @@ jQuery(function($){
 
     // --- Leaderboard Logic ---
     const $lbModal = $('#lb-modal');
-    $('#lb-add-new').click(() => $lbModal.fadeIn(200));
+    // Open Modal: Add
+    $('#lb-add-new').click(() => {
+        $('#lb-id').val(''); // Clear ID
+        $('#lb-user-selected').val('');
+        $('#lb-user-search').val('');
+        $('#lb-course-selected').val('');
+        $('#lb-course-search').val('');
+        $('#lb-exam-name').val('');
+        $('#lb-points').val('');
+        // Keep date as today
+        $('#lb-modal .cb-modal-header h2').text('Add Leaderboard Entry');
+        $lbModal.fadeIn(200);
+    });
+
     $('#lb-close, #lb-cancel, .cb-modal-backdrop').click(() => $lbModal.fadeOut(200));
+
+    // Open Modal: Edit
+    $(document).on('click', '.lb-edit-btn', function(){
+        let btn = $(this);
+        $('#lb-id').val(btn.data('id'));
+        $('#lb-user-selected').val(btn.data('user-id'));
+        $('#lb-user-search').val(btn.data('user-text'));
+        $('#lb-course-selected').val(btn.data('course-id'));
+        $('#lb-course-search').val(btn.data('course-text'));
+        $('#lb-exam-name').val(btn.data('exam'));
+        $('#lb-points').val(btn.data('points'));
+        $('#lb-date').val(btn.data('date'));
+        
+        $('#lb-modal .cb-modal-header h2').text('Edit Leaderboard Entry');
+        $lbModal.fadeIn(200);
+    });
 
     // Autocomplete for Leaderboard
     setupSearch('#lb-user-search', '#lb-user-dropdown', '#lb-user-selected', 'cb_search_users');
@@ -118,6 +147,7 @@ jQuery(function($){
 
     // Save Leaderboard
     $('#lb-save').click(function(){
+        let id    = $('#lb-id').val();
         let uid   = $('#lb-user-selected').val();
         let cid   = $('#lb-course-selected').val();
         let exam  = $('#lb-exam-name').val();
@@ -133,6 +163,7 @@ jQuery(function($){
 
         $.post(ajaxurl, {
             action: 'kb_lb_save',
+            id: id,
             user_id: uid,
             course_id: cid,
             exam_name: exam,
