@@ -8,6 +8,10 @@ class KR_LMS_AJAX {
         add_action('wp_ajax_cb_search_courses',       [$this, 'search_courses']);
         add_action('wp_ajax_cb_generate_certificate', [$this, 'generate_certificate']);
         add_action('wp_ajax_cb_delete_certificate',   [$this, 'delete_certificate']);
+        
+        // Leaderboard
+        add_action('wp_ajax_kb_lb_save',   [$this, 'save_leaderboard']);
+        add_action('wp_ajax_kb_lb_delete', [$this, 'delete_leaderboard']);
     }
 
     public function search_users() {
@@ -61,6 +65,44 @@ class KR_LMS_AJAX {
         global $wpdb;
         $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
         $wpdb->delete($wpdb->prefix . "certificates", ['id' => $id]);
+        
+        wp_send_json_success();
+    }
+
+    public function save_leaderboard() {
+        if (!current_user_can('manage_options')) wp_send_json_error(['message' => 'Unauthorized']);
+
+        global $wpdb;
+        $table = $wpdb->prefix . "kr_leaderboard";
+
+        $user_id   = intval($_POST['user_id']);
+        $course_id = intval($_POST['course_id']);
+        $exam_name = sanitize_text_field($_POST['exam_name']);
+        $points    = floatval($_POST['points']);
+        $date      = sanitize_text_field($_POST['date']);
+
+        if (!$user_id || !$course_id || !$exam_name || !$date) {
+            wp_send_json_error(['message' => 'Missing required fields']);
+        }
+
+        $res = $wpdb->insert($table, [
+            'user_id'   => $user_id,
+            'course_id' => $course_id,
+            'exam_name' => $exam_name,
+            'points'    => $points,
+            'date'      => $date
+        ]);
+
+        if ($res) wp_send_json_success();
+        else wp_send_json_error(['message' => 'Database error']);
+    }
+
+    public function delete_leaderboard() {
+        if (!current_user_can('manage_options')) wp_send_json_error();
+        
+        global $wpdb;
+        $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+        $wpdb->delete($wpdb->prefix . "kr_leaderboard", ['id' => $id]);
         
         wp_send_json_success();
     }
