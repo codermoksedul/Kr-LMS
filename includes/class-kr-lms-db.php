@@ -34,7 +34,11 @@ class KR_LMS_DB {
         ) $charset;";
 
         require_once ABSPATH . "wp-admin/includes/upgrade.php";
+        
+        // Output Buffering to prevent any unexpected output during activation
+        ob_start();
         dbDelta($sql1);
         dbDelta($sql2);
+        ob_end_clean();
     }
 }
