@@ -112,11 +112,6 @@ jQuery(function($){
     $('#lb-add-new').click(() => $lbModal.fadeIn(200));
     $('#lb-close, #lb-cancel, .cb-modal-backdrop').click(() => $lbModal.fadeOut(200));
 
-    // Auto-show on Leaderboard page
-    if (window.location.search.includes('page=kr-lms-leaderboard')) {
-        $lbModal.fadeIn(200);
-    }
-
     // Autocomplete for Leaderboard
     setupSearch('#lb-user-search', '#lb-user-dropdown', '#lb-user-selected', 'cb_search_users');
     setupSearch('#lb-course-search', '#lb-course-dropdown', '#lb-course-selected', 'cb_search_courses');
