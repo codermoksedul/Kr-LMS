@@ -1,0 +1,67 @@
+<?php
+if (!defined('ABSPATH')) exit;
+
+class KR_LMS_AJAX {
+
+    public function __construct() {
+        add_action('wp_ajax_cb_search_users',         [$this, 'search_users']);
+        add_action('wp_ajax_cb_search_courses',       [$this, 'search_courses']);
+        add_action('wp_ajax_cb_generate_certificate', [$this, 'generate_certificate']);
+        add_action('wp_ajax_cb_delete_certificate',   [$this, 'delete_certificate']);
+    }
+
+    public function search_users() {
+        $term = isset($_POST['term']) ? sanitize_text_field($_POST['term']) : '';
+        $users = get_users(['search' => '*'.$term.'*', 'number' => 10, 'fields' => ['ID', 'display_name', 'user_email']]);
+        $out = [];
+        foreach ($users as $u) {
+            $out[] = ['id' => $u->ID, 'text' => $u->display_name . ' (' . $u->user_email . ')'];
+        }
+        wp_send_json($out);
+    }
+
+    public function search_courses() {
+        $term = isset($_POST['term']) ? sanitize_text_field($_POST['term']) : '';
+        $posts = get_posts(['post_type' => 'lp_course', 's' => $term, 'posts_per_page' => 10]);
+        $out = [];
+        foreach ($posts as $p) {
+            $out[] = ['id' => $p->ID, 'text' => $p->post_title];
+        }
+        wp_send_json($out);
+    }
+
+    public function generate_certificate() {
+        global $wpdb;
+        $user_id   = intval($_POST['user_id']);
+        $course_id = intval($_POST['course_id']);
+        $grade     = sanitize_text_field($_POST['grade']);
+        
+        $meta = [
+            'grade'       => $grade,
+            'father_name' => sanitize_text_field($_POST['father_name']),
+            'mother_name' => sanitize_text_field($_POST['mother_name']),
+            'batch'       => sanitize_text_field($_POST['batch']),
+            'date_range'  => sanitize_text_field($_POST['date_range']),
+        ];
+
+        $wpdb->insert($wpdb->prefix . "certificates", [
+            'user_id'        => $user_id,
+            'course_id'      => $course_id,
+            'certificate_no' => uniqid("CERT-"),
+            'issued_at'      => current_time('mysql'),
+            'meta_json'      => wp_json_encode($meta),
+        ]);
+
+        wp_send_json(['success' => true]);
+    }
+
+    public function delete_certificate() {
+        if (!current_user_can('manage_options')) wp_send_json_error();
+        
+        global $wpdb;
+        $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+        $wpdb->delete($wpdb->prefix . "certificates", ['id' => $id]);
+        
+        wp_send_json_success();
+    }
+}
