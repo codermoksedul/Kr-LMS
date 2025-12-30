@@ -277,9 +277,9 @@ class KR_LMS_Generator {
              // If they asked for PDF but we failed, force download as PNG
              header('Content-Disposition: attachment; filename="' . $filenameBase . '.png"');
         } else {
-             // For preview/img tag, inline is better, or attachment if direct
-             // Let's use inline for preview usage (format=png)
-             header('Content-Disposition: inline; filename="' . $filenameBase . '.png"');
+             // Check if forced download is requested
+             $disposition = isset($_GET['download']) ? 'attachment' : 'inline';
+             header('Content-Disposition: ' . $disposition . '; filename="' . $filenameBase . '.png"');
         }
         
         header('Cache-Control: no-cache, must-revalidate');
