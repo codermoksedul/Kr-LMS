@@ -518,41 +518,79 @@ class KR_LMS_Admin {
                 <h2>Shortcode Guide</h2>
             </div>
             
-            <div class="cb-card" style="padding: 40px; max-width: 900px;">
-                
-                <h3 style="margin-top:0;">Leaderboard System</h3>
-                <p class="cb-subtitle" style="margin-bottom: 30px;">
-                    The <code>[kr_leaderboard]</code> shortcode allows you to display student rankings anywhere on your site.
-                </p>
-
-                <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:20px; border-radius:8px; margin-bottom:30px;">
-                    <h4 style="margin-top:0; color:#2563eb;">1. Automatic Display</h4>
-                    <p style="margin-bottom:0;">
-                        Users do not need to do anything for Courses. The leaderboard for a specific course is 
-                        automatically displayed at the bottom of every <strong>Single Course Page</strong>.
-                    </p>
+            <div class="cb-card" style="padding: 0; max-width: 900px; overflow: hidden;">
+                <!-- Tabs -->
+                <div style="display:flex; border-bottom:1px solid #e2e8f0; background:#f8fafc;">
+                    <div class="kr-tab active" onclick="openTab(event, 'tab-leaderboard')" style="padding:15px 25px; cursor:pointer; font-weight:600; color:#334155; border-bottom:2px solid transparent;">Leaderboard</div>
+                    <div class="kr-tab" onclick="openTab(event, 'tab-certificate')" style="padding:15px 25px; cursor:pointer; font-weight:600; color:#64748b; border-bottom:2px solid transparent;">Certificates</div>
                 </div>
 
-                <hr style="border:0; border-top:1px solid #f1f5f9; margin:30px 0;">
+                <!-- Tab Content: Leaderboard -->
+                <div id="tab-leaderboard" class="kr-tab-content" style="padding:40px;">
+                    <h3 style="margin-top:0;">Leaderboard System</h3>
+                    <p class="cb-subtitle" style="margin-bottom: 30px;">
+                        The <code>[kr_leaderboard]</code> shortcode allows you to display student rankings.
+                    </p>
 
-                <h4 style="margin-bottom:10px;">2. Global Leaderboard (Hall of Fame)</h4>
-                <p>To show the top students across <strong>ALL</strong> courses (based on total points), use this shortcode on any page:</p>
-                <code style="display:block; background:#1e293b; color:#fff; padding:15px; border-radius:6px; margin:10px 0;">[kr_leaderboard type="global" title="Top Students of All Time"]</code>
+                    <div style="background:#f0f9ff; border:1px solid #e0f2fe; padding:20px; border-radius:8px; margin-bottom:30px;">
+                        <h4 style="margin-top:0; color:#0369a1;">1. Automatic Display</h4>
+                        <p style="margin-bottom:0; color:#0c4a6e;">
+                            Users do not need to do anything for Courses. The leaderboard for a specific course is 
+                            automatically displayed at the bottom of every <strong>Single Course Page</strong>.
+                        </p>
+                    </div>
 
-                <h4 style="margin-top:30px; margin-bottom:10px;">3. Specific Course Leaderboard</h4>
-                <p>If you want to show a specific course's ranking on a custom page (e.g. Homepage), use the Course ID:</p>
-                <code style="display:block; background:#1e293b; color:#fff; padding:15px; border-radius:6px; margin:10px 0;">[kr_leaderboard course_id="123"]</code>
+                    <h4 style="margin-bottom:10px;">2. Global Leaderboard (Hall of Fame)</h4>
+                    <p>Show top students across <strong>ALL</strong> courses (Total Points):</p>
+                    <code style="display:block; background:#1e293b; color:#fff; padding:15px; border-radius:6px; margin:10px 0;">[kr_leaderboard type="global" title="Top Students of All Time"]</code>
 
-                <h4 style="margin-top:30px; margin-bottom:10px;">4. Options</h4>
-                <p>You can customize the output using these attributes:</p>
-                <ul style="list-style:disc; margin-left:20px; margin-top:10px; color:#475569;">
-                    <li><code>limit="5"</code> - Show only top 5 students.</li>
-                    <li><code>title="My Title"</code> - Change the header text.</li>
-                    <li><code>type="global"</code> - Switch to overall ranking mode.</li>
-                </ul>
+                    <h4 style="margin-top:30px; margin-bottom:10px;">3. Specific Course Leaderboard</h4>
+                    <p>Show a specific course's ranking on a custom page:</p>
+                    <code style="display:block; background:#1e293b; color:#fff; padding:15px; border-radius:6px; margin:10px 0;">[kr_leaderboard course_id="123"]</code>
+                </div>
 
+                <!-- Tab Content: Certificate -->
+                <div id="tab-certificate" class="kr-tab-content" style="display:none; padding:40px;">
+                    <h3 style="margin-top:0;">Certificate Verification</h3>
+                    <p class="cb-subtitle" style="margin-bottom: 30px;">
+                        Allow users to search and download their certificates publicly.
+                    </p>
+
+                    <div style="background:#f0fdf4; border:1px solid #dcfce7; padding:20px; border-radius:8px; margin-bottom:30px;">
+                        <h4 style="margin-top:0; color:#15803d;">Public Search Form</h4>
+                        <p style="margin-bottom:0; color:#14532d;">
+                            This shortcode displays a search box where users can enter their <strong>Email Address</strong>.
+                            If found, they can instantly download their certificates as PDF.
+                        </p>
+                    </div>
+
+                    <h4 style="margin-bottom:10px;">Usage</h4>
+                    <p>Paste this shortcode on any public page (e.g. "Verify Certificate"):</p>
+                    <code style="display:block; background:#1e293b; color:#fff; padding:15px; border-radius:6px; margin:10px 0;">[kr_certificate_search]</code>
+                </div>
             </div>
         </div>
+
+        <script>
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("kr-tab-content");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("kr-tab");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].style.color = "#64748b";
+                tablinks[i].style.borderBottomColor = "transparent";
+            }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.style.color = "#334155";
+            evt.currentTarget.style.borderBottomColor = "#2563eb";
+        }
+        // Initialize style for active tab (JS fallback if CSS classes aren't enough)
+        document.querySelector('.kr-tab.active').style.color = "#334155";
+        document.querySelector('.kr-tab.active').style.borderBottomColor = "#2563eb";
+        </script>
         <?php
     }
 }

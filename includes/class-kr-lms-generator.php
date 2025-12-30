@@ -6,6 +6,7 @@ class KR_LMS_Generator {
     public function __construct() {
         add_action('admin_post_cb_view_certificate', [$this, 'view_page']);
         add_action('admin_post_cb_download_certificate_png', [$this, 'generate_png']);
+        add_action('admin_post_nopriv_cb_download_certificate_png', [$this, 'generate_png']);
     }
 
     public function view_page() {
@@ -110,10 +111,17 @@ class KR_LMS_Generator {
     }
 
     public function generate_png() {
-        if (!current_user_can('manage_options')) wp_die('Permission denied');
-        
         $id = intval($_GET['id']);
-        check_admin_referer('cb_download_' . $id);
+        $nonce = isset($_REQUEST['_wpnonce']) ? $_REQUEST['_wpnonce'] : '';
+        
+        // Security Check: Allow Admin OR Public with Search Token
+        // Note: check_admin_referer dies on failure, so we use wp_verify_nonce
+        $isAdmin  = current_user_can('manage_options') && wp_verify_nonce($nonce, 'cb_download_' . $id);
+        $isPublic = wp_verify_nonce($nonce, 'kr_cert_dl_' . $id);
+
+        if (!$isAdmin && !$isPublic) {
+            wp_die('Permission denied or link expired.');
+        }
 
         global $wpdb;
         $cert = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}certificates WHERE id = %d", $id));

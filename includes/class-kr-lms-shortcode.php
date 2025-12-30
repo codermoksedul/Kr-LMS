@@ -8,10 +8,168 @@ class KR_LMS_Shortcode {
         
         // Auto-hook into LearnPress Course (Bottom of page)
         add_action('learn_press_after_single_course', [$this, 'auto_display_on_course']);
+        
+        // Certificate Search Shortcode
+        add_shortcode('kr_certificate_search', [$this, 'render_certificate_search']);
     }
 
     public function auto_display_on_course() {
         echo do_shortcode('[kr_leaderboard title="Course Leaderboard"]');
+    }
+
+    public function render_certificate_search($atts) {
+        ob_start();
+        ?>
+        <div class="kr-lms-cert-search">
+            <style>
+                .kr-lms-cert-search { 
+                    max-width: 800px; margin: 40px auto; 
+                    font-family: 'Inter', system-ui, -apple-system, sans-serif; 
+                }
+                /* Search Form */
+                .kr-cs-form { 
+                    display: flex; 
+                    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+                    border-radius: 12px; overflow: hidden;
+                    margin-bottom: 40px;
+                    border: 1px solid #e2e8f0;
+                    background: #fff;
+                    transition: all 0.3s ease;
+                }
+                .kr-cs-form:focus-within {
+                    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+                    transform: translateY(-2px);
+                    border-color: #3b82f6;
+                }
+                .kr-cs-input { 
+                    flex: 1; padding: 18px 24px; border: none; 
+                    font-size: 16px; outline: none; color: #1e293b;
+                }
+                .kr-cs-input::placeholder { color: #94a3b8; }
+                .kr-cs-btn { 
+                    padding: 0 35px; background: #2563eb; color: #fff; 
+                    border: none; cursor: pointer; font-size: 16px; font-weight: 600;
+                    transition: background 0.2s;
+                }
+                .kr-cs-btn:hover { background: #1d4ed8; }
+
+                /* Result Card */
+                .kr-cs-result { 
+                    background: #fff; border: 1px solid #f1f5f9; padding: 24px; 
+                    margin-bottom: 20px; border-radius: 16px; 
+                    display: flex; align-items: center; gap: 20px; 
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    position: relative; overflow: hidden;
+                }
+                .kr-cs-result:hover { 
+                    transform: translateY(-4px); 
+                    box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.1);
+                    border-color: #cbd5e1;
+                }
+                .kr-cs-icon {
+                    width: 56px; height: 56px; background: #eff6ff; color: #3b82f6;
+                    border-radius: 12px; display: flex; align-items: center; justify-content: center;
+                    flex-shrink: 0;
+                }
+                .kr-cs-icon svg { width: 28px; height: 28px; fill: currentColor; }
+                
+                .kr-cs-info { flex: 1; min-width: 0; }
+                .kr-cs-title { 
+                    font-size: 18px; font-weight: 700; color: #1e293b; 
+                    margin-bottom: 8px; line-height: 1.4;
+                    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+                }
+                .kr-cs-meta { 
+                    font-size: 13px; color: #64748b; 
+                    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+                }
+                .kr-cs-pill {
+                    background: #f1f5f9; padding: 4px 10px; border-radius: 6px; align-items: center; display: flex;
+                    font-size: 12px; font-weight: 600; color: #475569; letter-spacing: 0.02em;
+                }
+
+                .kr-cs-download { 
+                    text-decoration: none; background: #fff; color: #0f172a; 
+                    padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600;
+                    border: 1px solid #e2e8f0; display: inline-flex; align-items: center; gap: 8px;
+                    transition: all 0.2s; white-space: nowrap;
+                }
+                .kr-cs-download:hover { 
+                    background: #f8fafc; border-color: #94a3b8; transform: translateY(-1px);
+                }
+                .kr-cs-download svg { width: 18px; height: 18px; }
+                
+                .kr-cs-no-res { 
+                    text-align: center; padding: 40px; color: #64748b; 
+                    background: #f8fafc; border-radius: 12px; border: 1px dashed #cbd5e1; 
+                }
+
+                @media (max-width: 600px) {
+                    .kr-cs-result { flex-direction: column; text-align: center; gap: 15px; }
+                    .kr-cs-meta { justify-content: center; }
+                    .kr-cs-download { width: 100%; justify-content: center; }
+                }
+            </style>
+            
+            <form method="post" class="kr-cs-form">
+                <input type="email" name="kr_cert_email" class="kr-cs-input" placeholder="Enter your registered email address..." required value="<?php echo isset($_POST['kr_cert_email']) ? esc_attr($_POST['kr_cert_email']) : ''; ?>">
+                <button type="submit" class="kr-cs-btn">Search Records</button>
+            </form>
+
+            <?php
+            if ($_SERVER['REQUEST_METHOD'] === 'POST' && !empty($_POST['kr_cert_email'])) {
+                $email = sanitize_email($_POST['kr_cert_email']);
+                global $wpdb;
+                $table = $wpdb->prefix . "certificates";
+                $users = $wpdb->users;
+
+                // Query Certificates
+                $results = $wpdb->get_results($wpdb->prepare("
+                    SELECT c.*, u.display_name, c.course_id 
+                    FROM $table c
+                    LEFT JOIN $users u ON c.user_id = u.ID
+                    WHERE u.user_email = %s
+                    ORDER BY c.issued_at DESC
+                ", $email));
+
+                if ($results) {
+                    foreach ($results as $row) {
+                        $meta = json_decode($row->meta_json, true);
+                        $course_title = get_the_title($row->course_id) ?: 'Deleted Course';
+                        $date = date('M d, Y', strtotime($row->issued_at));
+                        
+                        $nonce = wp_create_nonce('kr_cert_dl_' . $row->id);
+                        $url = admin_url("admin-post.php?action=cb_download_certificate_png&format=pdf&id={$row->id}&_wpnonce={$nonce}");
+                        
+                        echo '<div class="kr-cs-result">';
+                            echo '<div class="kr-cs-icon">';
+                                echo '<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9v-2h2v2zm0-4H9V7h2v5z"/></svg>'; // Placeholder or Award Icon
+                                echo '<svg viewBox="0 0 24 24"><path d="M12,1L3,5V11C3,16.55 6.84,21.74 12,23C17.16,21.74 21,16.55 21,11V5L12,1M12,11.99H7V10.29H12V11.99M17,8.29H7V6.59H17V8.29M17,5.59H7V3.89H17V5.59Z" transform="scale(0.8) translate(3,3)"/></svg>'; 
+                            echo '</div>';
+                            echo '<div class="kr-cs-info">';
+                                echo '<div class="kr-cs-title">' . esc_html($course_title) . '</div>';
+                                echo '<div class="kr-cs-meta">';
+                                    echo '<span class="kr-cs-pill">CERT: ' . esc_html($row->certificate_no) . '</span>';
+                                    echo '<span>Issued: ' . $date . '</span>';
+                                echo '</div>';
+                            echo '</div>';
+                            echo '<a href="' . esc_url($url) . '" class="kr-cs-download">';
+                                echo '<svg viewBox="0 0 24 24"><path d="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z" fill="currentColor"/></svg>';
+                                echo 'Download PDF';
+                            echo '</a>';
+                        echo '</div>';
+                    }
+                } else {
+                    echo '<div class="kr-cs-no-res">';
+                    echo '<h4 style="margin:0 0 10px; color:#475569;">No Records Found</h4>';
+                    echo '<p style="margin:0;">We couldn\'t find any certificates linked to <strong>'.esc_html($email).'</strong>.</p>';
+                    echo '</div>';
+                }
+            }
+            ?>
+        </div>
+        <?php
+        return ob_get_clean();
     }
 
     public function render_leaderboard($atts) {
