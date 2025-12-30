@@ -155,6 +155,11 @@ class KR_LMS_Admin {
                                     admin_url('admin-post.php?action=cb_download_certificate&id=' . $c->id),
                                     'cb_download_' . $c->id
                                 );
+                                
+                                $view_url = wp_nonce_url(
+                                    admin_url('admin-post.php?action=cb_view_certificate&id=' . $c->id),
+                                    'cb_view_' . $c->id
+                                );
                             ?>
                             <tr id="cb-row-<?php echo $c->id; ?>">
                                 <td class="cb-id">#<?php echo $c->id; ?></td>
@@ -174,8 +179,8 @@ class KR_LMS_Admin {
                                 <td><span class="cb-badge"><?php echo esc_html($grade); ?></span></td>
                                 <td><?php echo date('M j, Y', strtotime($c->issued_at)); ?></td>
                                 <td style="text-align:right;">
-                                    <a href="<?php echo esc_url($download_url); ?>" class="cb-action-btn cb-tooltip" title="Download">
-                                        <span class="dashicons dashicons-download"></span>
+                                    <a href="<?php echo esc_url($view_url); ?>" class="cb-action-btn cb-tooltip" title="Preview Certificate" target="_blank">
+                                        <span class="dashicons dashicons-visibility"></span>
                                     </a>
                                     <button class="cb-action-btn cb-delete-btn cb-tooltip" title="Delete" data-id="<?php echo $c->id; ?>">
                                         <span class="dashicons dashicons-trash"></span>

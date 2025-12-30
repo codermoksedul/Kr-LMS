@@ -17,6 +17,10 @@ define('KR_LMS_URL', plugin_dir_url(__FILE__));
 define('KR_LMS_ASSETS', KR_LMS_URL . 'assets/');
 define('KR_LMS_CERT_TEMPLATE_PATH', KR_LMS_PATH . 'assets/img/certificate-template.png');
 define('KR_LMS_CERT_FONT_PATH',     KR_LMS_PATH . 'assets/img/certificate-font.ttf');
+define('KR_LMS_CERT_FONT_BOLD_PATH', KR_LMS_PATH . 'assets/img/certificate-font-bold.ttf');
+define('KR_LMS_CERT_LOGO_PATH',     KR_LMS_PATH . 'assets/img/logo.png');
+define('KR_LMS_CERT_BADGE_PATH',    KR_LMS_PATH . 'assets/img/badge.png');
+define('KR_LMS_CERT_SIGNATURE_PATH', KR_LMS_PATH . 'assets/img/signature.png');
 
 // Includes
 require_once KR_LMS_PATH . 'includes/class-kr-lms-db.php';

@@ -4,10 +4,123 @@ if (!defined('ABSPATH')) exit;
 class KR_LMS_Generator {
 
     public function __construct() {
-        add_action('admin_post_cb_download_certificate', [$this, 'download']);
+        add_action('admin_post_cb_view_certificate', [$this, 'view_page']);
+        add_action('admin_post_cb_download_certificate_png', [$this, 'generate_png']);
     }
 
-    public function download() {
+    public function view_page() {
+        if (!current_user_can('manage_options')) wp_die('Permission denied');
+        
+        $id = intval($_GET['id']);
+        check_admin_referer('cb_view_' . $id);
+        
+        // Generate the URL for the raw image
+        $img_url = admin_url('admin-post.php?action=cb_download_certificate_png&id=' . $id . '&_wpnonce=' . wp_create_nonce('cb_download_' . $id));
+        
+        ?>
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Certificate Preview</title>
+            <style>
+                body {
+                    margin: 0;
+                    padding: 20px;
+                    background: #f0f0f1;
+                    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    min-height: 100vh;
+                }
+                .toolbar {
+                    margin-bottom: 20px;
+                    display: flex;
+                    gap: 15px;
+                    background: white;
+                    padding: 15px 25px;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                }
+                .btn {
+                    text-decoration: none;
+                    padding: 10px 20px;
+                    border-radius: 5px;
+                    font-weight: 500;
+                    font-size: 14px;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    cursor: pointer;
+                    border: none;
+                    transition: all 0.2s;
+                }
+                .btn-print {
+                    background-color: #2271b1;
+                    color: white;
+                }
+                .btn-print:hover {
+                    background-color: #135e96;
+                }
+                .btn-download {
+                    background-color: #108a00;
+                    color: white;
+                }
+                .btn-download:hover {
+                    background-color: #0b6100;
+                }
+                .btn-close {
+                    background-color: #d63638;
+                    color: white;
+                }
+                .btn-close:hover {
+                    background-color: #a32b2d;
+                }
+                .preview-container {
+                    max-width: 100%;
+                    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+                    background: white;
+                }
+                .cert-image {
+                    display: block;
+                    max-width: 100%;
+                    height: auto;
+                    max-height: 85vh;
+                }
+                @media print {
+                    body { padding: 0; background: white; }
+                    .toolbar { display: none; }
+                    .preview-container { box-shadow: none; }
+                    .cert-image { max-height: none; width: 100%; }
+                    @page { margin: 0; size: auto; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="toolbar">
+                <button onclick="window.print()" class="btn btn-print">
+                    🖨️ Print / Save as PDF
+                </button>
+                <a href="<?php echo esc_url($img_url); ?>" download="certificate-<?php echo $id; ?>.png" class="btn btn-download">
+                    ⬇️ Download PNG
+                </a>
+                <button onclick="window.close()" class="btn btn-close">
+                    ✕ Close
+                </button>
+            </div>
+            
+            <div class="preview-container">
+                <img src="<?php echo esc_url($img_url); ?>" alt="Certificate Preview" class="cert-image">
+            </div>
+        </body>
+        </html>
+        <?php
+        exit;
+    }
+
+    public function generate_png() {
         if (!current_user_can('manage_options')) wp_die('Permission denied');
         
         $id = intval($_GET['id']);
@@ -17,86 +130,125 @@ class KR_LMS_Generator {
         $cert = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}certificates WHERE id = %d", $id));
         if (!$cert) wp_die('Not found');
 
-        if (file_exists(KR_LMS_CERT_TEMPLATE_PATH)) {
-            $im = imagecreatefrompng(KR_LMS_CERT_TEMPLATE_PATH);
-            imagealphablending($im, true);
-            imagesavealpha($im, true);
-            $width = imagesx($im); $height = imagesy($im);
-        } else {
-            $width = 1280; $height = 904;
-            $im = imagecreatetruecolor($width, $height);
-            
-            $bg = imagecolorallocate($im, 255, 255, 255);
-            imagefilledrectangle($im, 0, 0, $width, $height, $bg);
-            
-            $accentBlue = imagecolorallocate($im, 37, 99, 235);
-            imagefilledrectangle($im, 150, 130, 270, 770, $accentBlue); 
-            
-            $qrBlack = imagecolorallocate($im, 0, 0, 0);
-            imagefilledrectangle($im, 150, 800, 250, 900, $qrBlack);
-            imagestring($im, 2, 165, 840, "QR CODE", $bg);
-        }
-
-        $black = imagecolorallocate($im, 17, 24, 39);
-        $gray  = imagecolorallocate($im, 75, 85, 99);
-        $blue  = imagecolorallocate($im, 37, 99, 235);
+        // Load the background template
+        $bgPath = KR_LMS_PATH . 'certificate-bg.png';
         
-        $user   = get_userdata($cert->user_id);
+        if (!file_exists($bgPath)) {
+            wp_die('Certificate background not found');
+        }
+        
+        $im = @imagecreatefrompng($bgPath);
+        if ($im === false) {
+            wp_die('Failed to load certificate background');
+        }
+        
+        // Force True Color to ensure text colors work correctly
+        if (!imageistruecolor($im)) {
+            $temp = imagecreatetruecolor($width, $height);
+            imagecopy($temp, $im, 0, 0, 0, 0, $width, $height);
+            imagedestroy($im);
+            $im = $temp;
+        }
+        
+        imagealphablending($im, true);
+        imagesavealpha($im, true);
+        
+        // Define colors
+        $black = imagecolorallocate($im, 17, 24, 39);
+        $gray = imagecolorallocate($im, 102, 102, 102);
+        $royalBlue = imagecolorallocate($im, 30, 94, 235);
+        $red = imagecolorallocate($im, 255, 0, 0); // For error/fallback
+        
+        // Get certificate data
+        $user = get_userdata($cert->user_id);
         $course = get_the_title($cert->course_id);
-        $meta   = json_decode($cert->meta_json, true) ?: [];
+        $meta = json_decode($cert->meta_json, true) ?: [];
         
         $student_name = $user ? $user->display_name : 'Student Name';
-        $course_name  = $course ?: 'Course Name';
+        $course_name = $course ?: 'Course Name';
+        $father = isset($meta['father_name']) && $meta['father_name'] ? $meta['father_name'] : 'Md Mollbor Rahman';
+        $mother = isset($meta['mother_name']) && $meta['mother_name'] ? $meta['mother_name'] : 'Afiya Khanomhas';
+        $batch = isset($meta['batch']) ? $meta['batch'] : 'Batch 2';
+        $date_range = isset($meta['date_range']) ? $meta['date_range'] : '28 May, 2024 to 05 December, 2024';
+        $grade = isset($meta['grade']) ? $meta['grade'] : 'A';
         
-        $father = isset($meta['father_name']) && $meta['father_name'] ? $meta['father_name'] : '..................';
-        $mother = isset($meta['mother_name']) && $meta['mother_name'] ? $meta['mother_name'] : '..................';
-        $batch  = isset($meta['batch']) ? $meta['batch'] : '';
-        $date_range = isset($meta['date_range']) ? $meta['date_range'] : '..................';
-        $grade  = isset($meta['grade']) ? $meta['grade'] : '-';
-
-        $draw = function($text, $size, $x, $y, $color, $fontRequest = '') use ($im) {
-            $font = KR_LMS_CERT_FONT_PATH; 
-            if (file_exists($font) && function_exists('imagettftext')) {
-                imagettftext($im, $size, 0, $x, $y, $color, $font, $text);
-            } else {
-                imagestring($im, 5, $x, $y-15, $text, $color);
+        // Font paths - Fix for Windows/GD
+        // Use clean absolute path with forward slashes, NO GDFONTPATH env var
+        $fontRegular = str_replace('\\', '/', KR_LMS_CERT_FONT_PATH);
+        $fontBold    = str_replace('\\', '/', KR_LMS_CERT_FONT_BOLD_PATH);
+        
+        // Helper function to draw text with fallback
+        $drawText = function($im, $size, $x, $y, $color, $font, $text) use ($red) {
+            // Check if font exists
+            if (file_exists($font)) {
+                // Try TTF with captured error
+                try {
+                    $bbox = @imagettftext($im, $size, 0, $x, $y, $color, $font, $text);
+                    if ($bbox !== false) return;
+                    
+                    // If false, check last error
+                    $err = error_get_last();
+                    error_log("KR LMS Font Error: " . ($err['message'] ?? 'Unknown error') . " loading $font");
+                    
+                } catch (Exception $e) {
+                    error_log("KR LMS Font Exception: " . $e->getMessage());
+                }
             }
+            
+            // Fallback to built-in font (1-5) if TTF fails
+            // Scale size to roughly match 1-5 scale
+            $builtinFont = 5; 
+            
+            // Adjust Y because imagestring uses top-left, imagettftext uses baseline
+            $y_adj = $y - ($size * 1.2); 
+            
+            imagestring($im, $builtinFont, $x, $y_adj, $text, $color);
         };
-
-        $x_base = 340; 
-        $y_start = 180;
-
-        $draw("This is certify that", 18, $x_base, $y_start, $gray);
-        if(function_exists('imageline')) {
-             imageline($im, $x_base, $y_start + 35, $x_base + 120, $y_start + 35, $gray);
+        
+        // Text positioning - Calibrated for 3508x2480px A4 Landscape
+        // Blue bar width is approx 15% -> start text at ~28%
+        $startX = 1050; 
+        $startY = 600;
+        
+        // 1. "This is certify that" - Removed (in BG)
+        
+        // 3. Student Name - Large Blue Bold
+        $drawText($im, 120, $startX, $startY + 150, $royalBlue, $fontBold, $student_name);
+        
+        // 4. Parent details
+        $parentText = "Son of " . $father . " & " . $mother;
+        $drawText($im, 35, $startX, $startY + 260, $gray, $fontRegular, $parentText);
+        $drawText($im, 35, $startX, $startY + 310, $gray, $fontRegular, "successfully completed the");
+        
+        // 5. Course Name - Large Black Bold
+        $courseDisplay = $course_name;
+        if (strpos($courseDisplay, $batch) === false) {
+             $courseDisplay .= " " . $batch;
         }
 
-        $draw($student_name, 48, $x_base, $y_start + 90, $blue);
-
-        $draw("Son of $father & $mother", 16, $x_base, $y_start + 150, $gray);
-        $draw("successfully completed the", 16, $x_base, $y_start + 185, $gray);
-
-        $course_text = $course_name . ($batch ? " " . $batch : "");
-        $draw($course_text, 24, $x_base, $y_start + 240, $black);
-
-        $draw("with grade $grade held on $date_range", 16, $x_base, $y_start + 280, $gray);
-        $draw("at Visual Center", 16, $x_base, $y_start + 310, $gray);
-
-        $footer_x = 900;
-        $footer_y = 650;
+        $fontSize = 70;
+        if (strlen($courseDisplay) > 50) $fontSize = 55;
         
-        $draw("VERIFIED BY", 14, $footer_x, $footer_y, $black);
+        $drawText($im, $fontSize, $startX, $startY + 480, $black, $fontBold, $courseDisplay);
         
-        if(function_exists('imageline')) {
-            $line_y = $footer_y + 80;
-            imageline($im, $footer_x, $line_y, $footer_x + 200, $line_y, $black);
-            imagefilledrectangle($im, $footer_x, $line_y, $footer_x + 200, $line_y + 1, $black);
+        // 6. Grade details
+        $gradeText = "with grade " . $grade . " held on " . $date_range;
+        $drawText($im, 35, $startX, $startY + 560, $gray, $fontRegular, $gradeText);
+        
+        // 7. Center location
+        $drawText($im, 35, $startX, $startY + 610, $gray, $fontRegular, "at Visual Center");
+
+        // Output
+        if (ob_get_level()) {
+            ob_end_clean();
         }
-        $draw("Director", 14, $footer_x, $footer_y + 110, $black);
-
+        
         header('Content-Type: image/png');
-        header('Content-Disposition: attachment; filename="certificate-' . $id . '.png"');
-        imagepng($im);
+        header('Content-Disposition: inline; filename="certificate-' . $id . '.png"');
+        header('Cache-Control: no-cache, must-revalidate');
+        header('Expires: 0');
+        
+        imagepng($im, null, 6);
         imagedestroy($im);
         exit;
     }
