@@ -160,6 +160,18 @@ class KR_LMS_Admin {
                                     admin_url('admin-post.php?action=cb_view_certificate&id=' . $c->id),
                                     'cb_view_' . $c->id
                                 );
+
+                                // Extract Dates (Logic for OLD entries compatibility)
+                                $d_start = isset($meta['date_start']) ? $meta['date_start'] : '';
+                                $d_end   = isset($meta['date_end'])   ? $meta['date_end']   : '';
+                                
+                                if (empty($d_start) && !empty($meta['date_range'])) {
+                                    $parts = explode(' to ', $meta['date_range']);
+                                    if (count($parts) == 2) {
+                                        $d_start = date('Y-m-d', strtotime($parts[0]));
+                                        $d_end   = date('Y-m-d', strtotime($parts[1]));
+                                    }
+                                }
                             ?>
                             <tr id="cb-row-<?php echo $c->id; ?>">
                                 <td class="cb-id">#<?php echo $c->id; ?></td>
@@ -182,6 +194,21 @@ class KR_LMS_Admin {
                                     <a href="<?php echo esc_url($view_url); ?>" class="cb-action-btn cb-tooltip" title="Download Certificate" target="_blank">
                                         <span class="dashicons dashicons-download"></span>
                                     </a>
+                                    <button class="cb-action-btn cb-edit-btn cb-tooltip" title="Edit"
+                                        data-id="<?php echo $c->id; ?>"
+                                        data-user-id="<?php echo $c->user_id; ?>"
+                                        data-user-text="<?php echo esc_attr($s_name . ' (' . $s_email . ')'); ?>"
+                                        data-course-id="<?php echo $c->course_id; ?>"
+                                        data-course-text="<?php echo esc_attr($c_title); ?>"
+                                        data-father="<?php echo esc_attr(isset($meta['father_name']) ? $meta['father_name'] : ''); ?>"
+                                        data-mother="<?php echo esc_attr(isset($meta['mother_name']) ? $meta['mother_name'] : ''); ?>"
+                                        data-batch="<?php echo esc_attr(isset($meta['batch']) ? $meta['batch'] : ''); ?>"
+                                        data-grade="<?php echo esc_attr($grade); ?>"
+                                        data-start="<?php echo esc_attr($d_start); ?>"
+                                        data-end="<?php echo esc_attr($d_end); ?>"
+                                    >
+                                        <span class="dashicons dashicons-edit"></span>
+                                    </button>
                                     <button class="cb-action-btn cb-delete-btn cb-tooltip" title="Delete" data-id="<?php echo $c->id; ?>">
                                         <span class="dashicons dashicons-trash"></span>
                                     </button>
@@ -224,6 +251,7 @@ class KR_LMS_Admin {
                     <button id="cb-close" class="cb-close-icon">&times;</button>
                 </div>
                 <div class="cb-modal-body">
+                    <input type="hidden" id="cb-id" value="">
                     <div class="cb-grid-2">
                         <div class="cb-form-group cb-full-width">
                             <label>Student</label>
@@ -448,11 +476,11 @@ class KR_LMS_Admin {
                         </div>
                         <div class="cb-form-group cb-full-width">
                             <label>Exam Name</label>
-                            <input type="text" id="lb-exam-name" class="cb-input">
+                            <input type="text" id="lb-exam-name" class="cb-input" placeholder="e.g. Final Exam 2024">
                         </div>
                         <div class="cb-form-group">
                             <label>Points</label>
-                            <input type="number" step="0.01" id="lb-points" class="cb-input">
+                            <input type="number" step="0.01" id="lb-points" class="cb-input" placeholder="e.g. 95.5">
                         </div>
                         <div class="cb-form-group">
                             <label>Date</label>

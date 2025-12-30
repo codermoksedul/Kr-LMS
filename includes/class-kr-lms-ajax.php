@@ -39,22 +39,36 @@ class KR_LMS_AJAX {
         $user_id   = intval($_POST['user_id']);
         $course_id = intval($_POST['course_id']);
         $grade     = sanitize_text_field($_POST['grade']);
+        $id        = isset($_POST['id']) ? intval($_POST['id']) : 0;
         
         $meta = [
             'grade'       => $grade,
             'father_name' => sanitize_text_field($_POST['father_name']),
             'mother_name' => sanitize_text_field($_POST['mother_name']),
             'batch'       => sanitize_text_field($_POST['batch']),
-            'date_range'  => sanitize_text_field($_POST['date_range']),
+            'date_range'  => sanitize_text_field($_POST['date_range']), // Formatted string
+            'date_start'  => sanitize_text_field($_POST['date_start']), // Raw YYYY-MM-DD
+            'date_end'    => sanitize_text_field($_POST['date_end']),   // Raw YYYY-MM-DD
         ];
 
-        $wpdb->insert($wpdb->prefix . "certificates", [
-            'user_id'        => $user_id,
-            'course_id'      => $course_id,
-            'certificate_no' => uniqid("CERT-"),
-            'issued_at'      => current_time('mysql'),
-            'meta_json'      => wp_json_encode($meta),
-        ]);
+        /*
+         * Start and End dates are saved in meta to easily repopulate the
+         * edit form later. date_range is used for display.
+         */
+
+        $data = [
+            'user_id' => $user_id,
+            'course_id' => $course_id,
+            'meta_json' => wp_json_encode($meta),
+        ];
+
+        if ($id > 0) {
+            $wpdb->update($wpdb->prefix . "certificates", $data, ['id' => $id]);
+        } else {
+            $data['certificate_no'] = uniqid("CERT-");
+            $data['issued_at'] = current_time('mysql');
+            $wpdb->insert($wpdb->prefix . "certificates", $data);
+        }
 
         wp_send_json(['success' => true]);
     }

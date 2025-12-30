@@ -2,42 +2,9 @@ jQuery(function($){
     const $modal = $('#cb-modal');
     
     // Modal Toggles (Certificate)
-    $('#cb-add-new').click(() => $modal.fadeIn(200));
-    $('#cb-close, #cb-cancel, .cb-modal-backdrop').click(() => $modal.fadeOut(200));
-
-    // Autocomplete Helper
-    function setupSearch(inputSel, dropdownSel, hiddenSel, action) {
-        $(document).on('keyup', inputSel, function(){
-            let term = $(this).val();
-            if(term.length < 2) return;
-            $.post(ajaxurl, { action, term }, function(res){
-                let $box = $(dropdownSel);
-                $box.empty().show();
-                if(!res.length) $box.append('<div class="no-res">No results</div>');
-                res.forEach(item => {
-                    $box.append(`<div data-id="${item.id}">${item.text}</div>`);
-                });
-            });
-        });
-        
-        $(document).on('click', dropdownSel + ' div', function(){
-            if($(this).hasClass('no-res')) return;
-            $(inputSel).val($(this).text());
-            $(hiddenSel).val($(this).data('id'));
-            $(dropdownSel).hide();
-        });
-    }
-
-    setupSearch('#cb-user-search', '#cb-user-dropdown', '#cb-user-selected', 'cb_search_users');
-    setupSearch('#cb-course-search', '#cb-course-dropdown', '#cb-course-selected', 'cb_search_courses');
-
-    // Hide dropdowns on outside click
-    $(document).click(e => {
-        if(!$(e.target).closest('.cb-autocomplete').length) $('.cb-dropdown').hide();
-    });
-
-    // Generate Certificate
+    // Generate / Update Certificate
     $('#cb-generate').click(function(){
+        let id  = $('#cb-id').val();
         let uid = $('#cb-user-selected').val();
         let cid = $('#cb-course-selected').val();
         let gr  = $('#cb-grade').val();
@@ -73,31 +40,84 @@ jQuery(function($){
             return;
         }
 
-        $(this).prop('disabled', true).text('Processing...');
+        let btn = $(this);
+        let originalText = btn.text();
+        btn.prop('disabled', true).text('Processing...');
 
         $.post(ajaxurl, {
             action: 'cb_generate_certificate',
+            id: id,
             user_id: uid,
             course_id: cid,
             grade: gr,
             father_name: fname,
             mother_name: mname,
             batch: batch,
-            date_range: dates
+            date_range: dates,
+            date_start: dStart, // Raw
+            date_end: dEnd      // Raw
         }, function(res){
             if(res.success) {
                 Swal.fire({
                     title: 'Success!',
-                    text: 'Certificate generated successfully.',
+                    text: id ? 'Certificate updated successfully.' : 'Certificate generated successfully.',
                     icon: 'success',
                     timer: 1500,
                     showConfirmButton: false
                 }).then(() => location.reload());
             } else {
                 Swal.fire('Error', res.message, 'error');
-                $('#cb-generate').prop('disabled', false).text('Generate');
+                btn.prop('disabled', false).text(originalText);
             }
         });
+    });
+
+    // Edit Certificate
+    $(document).on('click', '.cb-edit-btn', function(){
+        let btn = $(this);
+        
+        // Populate fields
+        $('#cb-id').val(btn.data('id'));
+        $('#cb-user-selected').val(btn.data('user-id'));
+        $('#cb-user-search').val(btn.data('user-text'));
+        $('#cb-course-selected').val(btn.data('course-id'));
+        $('#cb-course-search').val(btn.data('course-text'));
+        
+        $('#cb-father-name').val(btn.data('father'));
+        $('#cb-mother-name').val(btn.data('mother'));
+        $('#cb-batch').val(btn.data('batch'));
+        $('#cb-grade').val(btn.data('grade'));
+        
+        $('#cb-date-start').val(btn.data('start'));
+        $('#cb-date-end').val(btn.data('end'));
+
+        // Change UI
+        $('#cb-modal .cb-modal-header h2').text('Edit Certificate');
+        $('#cb-generate').text('Update Certificate');
+        
+        $modal.fadeIn(200);
+    });
+
+    // Reset when adding new
+    $('#cb-add-new').unbind('click').click(() => {
+        $('#cb-id').val('');
+        $('#cb-user-selected').val('');
+        $('#cb-user-search').val('');
+        $('#cb-course-selected').val('');
+        $('#cb-course-search').val('');
+        
+        $('#cb-father-name').val('');
+        $('#cb-mother-name').val('');
+        $('#cb-batch').val('');
+        $('#cb-grade').val('');
+        
+        $('#cb-date-start').val('');
+        $('#cb-date-end').val('');
+
+        $('#cb-modal .cb-modal-header h2').text('New Certificate');
+        $('#cb-generate').text('Generate');
+        
+        $modal.fadeIn(200);
     });
 
     // Delete Certificate
