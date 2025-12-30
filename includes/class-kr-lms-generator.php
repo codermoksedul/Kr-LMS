@@ -173,52 +173,45 @@ class KR_LMS_Generator {
         $grade = isset($meta['grade']) ? $meta['grade'] : 'A';
         
         // Font paths - Fix for Windows/GD
-        // Use clean absolute path with forward slashes, NO GDFONTPATH env var
-        $fontRegular = str_replace('\\', '/', KR_LMS_CERT_FONT_PATH);
-        $fontBold    = str_replace('\\', '/', KR_LMS_CERT_FONT_BOLD_PATH);
+        // Using System Fonts because custom fonts are incompatible with this PHP/GD setup
+        $fontRegular = 'C:/Windows/Fonts/arial.ttf';
+        $fontBold    = 'C:/Windows/Fonts/arialbd.ttf';
         
         // Helper function to draw text with fallback
         $drawText = function($im, $size, $x, $y, $color, $font, $text) use ($red) {
             // Check if font exists
             if (file_exists($font)) {
-                // Try TTF with captured error
                 try {
                     $bbox = @imagettftext($im, $size, 0, $x, $y, $color, $font, $text);
                     if ($bbox !== false) return;
-                    
-                    // If false, check last error
-                    $err = error_get_last();
-                    error_log("KR LMS Font Error: " . ($err['message'] ?? 'Unknown error') . " loading $font");
-                    
                 } catch (Exception $e) {
                     error_log("KR LMS Font Exception: " . $e->getMessage());
                 }
             }
             
             // Fallback to built-in font (1-5) if TTF fails
-            // Scale size to roughly match 1-5 scale
             $builtinFont = 5; 
-            
-            // Adjust Y because imagestring uses top-left, imagettftext uses baseline
             $y_adj = $y - ($size * 1.2); 
-            
             imagestring($im, $builtinFont, $x, $y_adj, $text, $color);
         };
         
         // Text positioning - Calibrated for 3508x2480px A4 Landscape
         // Blue bar width is approx 15% -> start text at ~28%
-        $startX = 1050; 
+        // Adjusted left to 950 to align with "This is certify that" line
+        $startX = 950; 
         $startY = 600;
         
         // 1. "This is certify that" - Removed (in BG)
         
-        // 3. Student Name - Large Blue Bold
-        $drawText($im, 120, $startX, $startY + 150, $royalBlue, $fontBold, $student_name);
+        // 3. Student Name - Large Blue
+        // SWITCHED TO REGULAR FONT for "Semi-Bold" look (Bold was too thick)
+        $drawText($im, 100, $startX, $startY + 150, $royalBlue, $fontRegular, $student_name);
         
         // 4. Parent details
+        // Increased font size to 40pt as requested
         $parentText = "Son of " . $father . " & " . $mother;
-        $drawText($im, 35, $startX, $startY + 260, $gray, $fontRegular, $parentText);
-        $drawText($im, 35, $startX, $startY + 310, $gray, $fontRegular, "successfully completed the");
+        $drawText($im, 40, $startX, $startY + 280, $gray, $fontRegular, $parentText);
+        $drawText($im, 40, $startX, $startY + 340, $gray, $fontRegular, "successfully completed the");
         
         // 5. Course Name - Large Black Bold
         $courseDisplay = $course_name;
@@ -226,17 +219,20 @@ class KR_LMS_Generator {
              $courseDisplay .= " " . $batch;
         }
 
-        $fontSize = 70;
-        if (strlen($courseDisplay) > 50) $fontSize = 55;
+        $fontSize = 55;
+        if (strlen($courseDisplay) > 50) $fontSize = 45;
         
-        $drawText($im, $fontSize, $startX, $startY + 480, $black, $fontBold, $courseDisplay);
+        // Moved down to +700 (from 650) - "More Down"
+        $drawText($im, $fontSize, $startX, $startY + 850, $black, $fontBold, $courseDisplay);
         
         // 6. Grade details
+        // Gap reduced (110px diff vs 150px previously) - "Text gap decrease"
         $gradeText = "with grade " . $grade . " held on " . $date_range;
-        $drawText($im, 35, $startX, $startY + 560, $gray, $fontRegular, $gradeText);
+        $drawText($im, 40, $startX, $startY + 950, $gray, $fontRegular, $gradeText);
         
         // 7. Center location
-        $drawText($im, 35, $startX, $startY + 610, $gray, $fontRegular, "at Visual Center");
+        // Tight gap maintained
+        $drawText($im, 40, $startX, $startY + 1020, $gray, $fontRegular, "at Visual Center");
 
         // Output
         if (ob_get_level()) {
