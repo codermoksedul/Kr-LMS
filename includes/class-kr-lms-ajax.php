@@ -6,6 +6,7 @@ class KR_LMS_AJAX {
     public function __construct() {
         add_action('wp_ajax_cb_search_users',         [$this, 'search_users']);
         add_action('wp_ajax_cb_search_courses',       [$this, 'search_courses']);
+        add_action('wp_ajax_cb_search_exams',         [$this, 'search_exams']);
         add_action('wp_ajax_cb_generate_certificate', [$this, 'generate_certificate']);
         add_action('wp_ajax_cb_delete_certificate',   [$this, 'delete_certificate']);
         
@@ -29,6 +30,18 @@ class KR_LMS_AJAX {
         $posts = get_posts(['post_type' => 'lp_course', 's' => $term, 'posts_per_page' => 10]);
         $out = [];
         foreach ($posts as $p) {
+            $out[] = ['id' => $p->ID, 'text' => $p->post_title];
+        }
+        wp_send_json($out);
+    }
+
+    public function search_exams() {
+        $term = isset($_POST['term']) ? sanitize_text_field($_POST['term']) : '';
+        // Search Lessons and Quizzes
+        $posts = get_posts(['post_type' => ['lp_lesson', 'lp_quiz'], 's' => $term, 'posts_per_page' => 10]);
+        $out = [];
+        foreach ($posts as $p) {
+            $type = ($p->post_type === 'lp_lesson') ? 'Lesson' : 'Quiz';
             $out[] = ['id' => $p->ID, 'text' => $p->post_title];
         }
         wp_send_json($out);

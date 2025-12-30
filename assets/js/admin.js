@@ -2,6 +2,43 @@ jQuery(function($){
     const $modal = $('#cb-modal');
     
     // Modal Toggles (Certificate)
+    $('#cb-add-new').click(() => $modal.fadeIn(200));
+    $('#cb-close, #cb-cancel, .cb-modal-backdrop').click(() => $modal.fadeOut(200));
+
+    // Autocomplete Helper
+    function setupSearch(inputSel, dropdownSel, hiddenSel, action) {
+        $(document).on('keyup', inputSel, function(){
+            let term = $(this).val();
+            if(term.length < 2) return;
+            $.post(ajaxurl, { action, term }, function(res){
+                let $box = $(dropdownSel);
+                if(!res.length) {
+                    $box.hide(); // Hide if no results (allow custom typing)
+                } else {
+                    $box.empty().show();
+                    res.forEach(item => {
+                        $box.append(`<div data-id="${item.id}">${item.text}</div>`);
+                    });
+                }
+            });
+        });
+        
+        $(document).on('click', dropdownSel + ' div', function(){
+            $(inputSel).val($(this).text());
+            $(hiddenSel).val($(this).data('id'));
+            $(dropdownSel).hide();
+        });
+    }
+
+    // Hide dropdowns on outside click
+    $(document).click(e => {
+        if(!$(e.target).closest('.cb-autocomplete').length) $('.cb-dropdown').hide();
+    });
+
+    // Initialize Autocomplete for Certificate (Restored)
+    setupSearch('#cb-user-search', '#cb-user-dropdown', '#cb-user-selected', 'cb_search_users');
+    setupSearch('#cb-course-search', '#cb-course-dropdown', '#cb-course-selected', 'cb_search_courses');
+
     // Generate / Update Certificate
     $('#cb-generate').click(function(){
         let id  = $('#cb-id').val();
@@ -186,6 +223,7 @@ jQuery(function($){
     // Autocomplete for Leaderboard
     setupSearch('#lb-user-search', '#lb-user-dropdown', '#lb-user-selected', 'cb_search_users');
     setupSearch('#lb-course-search', '#lb-course-dropdown', '#lb-course-selected', 'cb_search_courses');
+    setupSearch('#lb-exam-name', '#lb-exam-dropdown', '#lb-exam-id', 'cb_search_exams');
 
     // Save Leaderboard
     $('#lb-save').click(function(){

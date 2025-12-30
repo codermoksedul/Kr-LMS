@@ -27,6 +27,7 @@ require_once KR_LMS_PATH . 'includes/class-kr-lms-db.php';
 require_once KR_LMS_PATH . 'includes/class-kr-lms-admin.php';
 require_once KR_LMS_PATH . 'includes/class-kr-lms-ajax.php';
 require_once KR_LMS_PATH . 'includes/class-kr-lms-generator.php';
+require_once KR_LMS_PATH . 'includes/class-kr-lms-shortcode.php';
 
 // Main Class
 class KR_LMS {
@@ -39,6 +40,7 @@ class KR_LMS {
         new KR_LMS_Admin();
         new KR_LMS_AJAX();
         new KR_LMS_Generator();
+        new KR_LMS_Shortcode();
     }
 }
 
