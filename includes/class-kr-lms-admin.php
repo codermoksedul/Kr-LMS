@@ -179,8 +179,8 @@ class KR_LMS_Admin {
                                 <td><span class="cb-badge"><?php echo esc_html($grade); ?></span></td>
                                 <td><?php echo date('M j, Y', strtotime($c->issued_at)); ?></td>
                                 <td style="text-align:right;">
-                                    <a href="<?php echo esc_url($view_url); ?>" class="cb-action-btn cb-tooltip" title="Preview Certificate" target="_blank">
-                                        <span class="dashicons dashicons-visibility"></span>
+                                    <a href="<?php echo esc_url($view_url); ?>" class="cb-action-btn cb-tooltip" title="Download Certificate" target="_blank">
+                                        <span class="dashicons dashicons-download"></span>
                                     </a>
                                     <button class="cb-action-btn cb-delete-btn cb-tooltip" title="Delete" data-id="<?php echo $c->id; ?>">
                                         <span class="dashicons dashicons-trash"></span>
@@ -235,11 +235,11 @@ class KR_LMS_Admin {
                         </div>
                         <div class="cb-form-group">
                             <label>Father's Name</label>
-                            <input type="text" id="cb-father-name" class="cb-input">
+                            <input type="text" id="cb-father-name" class="cb-input" placeholder="e.g. Md. Father Name">
                         </div>
                         <div class="cb-form-group">
                             <label>Mother's Name</label>
-                            <input type="text" id="cb-mother-name" class="cb-input">
+                            <input type="text" id="cb-mother-name" class="cb-input" placeholder="e.g. Mrs. Mother Name">
                         </div>
                         <div class="cb-form-group cb-full-width">
                             <label>Course</label>
@@ -251,16 +251,23 @@ class KR_LMS_Admin {
                         </div>
                         <div class="cb-form-group">
                             <label>Batch</label>
-                            <input type="text" id="cb-batch" class="cb-input">
+                            <input type="text" id="cb-batch" class="cb-input" placeholder="e.g. Batch 2">
                         </div>
                         <div class="cb-form-group">
                             <label>Grade</label>
-                            <input type="text" id="cb-grade" class="cb-input">
+                            <input type="text" id="cb-grade" class="cb-input" placeholder="e.g. A+">
                         </div>
-                        <div class="cb-form-group cb-full-width">
-                            <label>Date Range</label>
-                            <input type="text" id="cb-date-range" class="cb-input">
+                        <div class="cb-grid-2 cb-full-width" style="grid-column: 1 / -1; display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                            <div class="cb-form-group">
+                                <label>Start Date</label>
+                                <input type="date" id="cb-date-start" class="cb-input">
+                            </div>
+                            <div class="cb-form-group">
+                                <label>End Date</label>
+                                <input type="date" id="cb-date-end" class="cb-input">
+                            </div>
                         </div>
+                        <input type="hidden" id="cb-date-range">
                     </div>
                 </div>
                 <div class="cb-modal-footer">

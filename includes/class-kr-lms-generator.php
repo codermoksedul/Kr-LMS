@@ -14,8 +14,10 @@ class KR_LMS_Generator {
         $id = intval($_GET['id']);
         check_admin_referer('cb_view_' . $id);
         
-        // Generate the URL for the raw image
-        $img_url = admin_url('admin-post.php?action=cb_download_certificate_png&id=' . $id . '&_wpnonce=' . wp_create_nonce('cb_download_' . $id));
+        // URLs for PNG (Preview) and PDF (Download)
+        $base_url = admin_url('admin-post.php?action=cb_download_certificate_png&id=' . $id . '&_wpnonce=' . wp_create_nonce('cb_download_' . $id));
+        $img_url = $base_url . '&format=png';
+        $pdf_url = $base_url . '&format=pdf';
         
         ?>
         <!DOCTYPE html>
@@ -57,19 +59,12 @@ class KR_LMS_Generator {
                     border: none;
                     transition: all 0.2s;
                 }
-                .btn-print {
+                .btn-pdf {
                     background-color: #2271b1;
                     color: white;
                 }
-                .btn-print:hover {
+                .btn-pdf:hover {
                     background-color: #135e96;
-                }
-                .btn-download {
-                    background-color: #108a00;
-                    color: white;
-                }
-                .btn-download:hover {
-                    background-color: #0b6100;
                 }
                 .btn-close {
                     background-color: #d63638;
@@ -89,22 +84,16 @@ class KR_LMS_Generator {
                     height: auto;
                     max-height: 85vh;
                 }
-                @media print {
-                    body { padding: 0; background: white; }
-                    .toolbar { display: none; }
-                    .preview-container { box-shadow: none; }
-                    .cert-image { max-height: none; width: 100%; }
-                    @page { margin: 0; size: auto; }
-                }
             </style>
         </head>
         <body>
             <div class="toolbar">
-                <button onclick="window.print()" class="btn btn-print">
-                    🖨️ Print / Save as PDF
-                </button>
-                <a href="<?php echo esc_url($img_url); ?>" download="certificate-<?php echo $id; ?>.png" class="btn btn-download">
-                    ⬇️ Download PNG
+                <a href="<?php echo esc_url($pdf_url); ?>" download="Certificate-<?php echo $id; ?>.pdf" class="btn btn-pdf">
+                    ⬇️ Download PDF
+                </a>
+                <!-- Optional PNG Download -->
+                <a href="<?php echo esc_url($img_url); ?>" download="Certificate-<?php echo $id; ?>.png" class="btn" style="background:#eee; color:#333;">
+                    ⬇️ PNG
                 </a>
                 <button onclick="window.close()" class="btn btn-close">
                     ✕ Close
@@ -238,14 +227,57 @@ class KR_LMS_Generator {
         if (ob_get_level()) {
             ob_end_clean();
         }
+
+        // Capture GD output to buffer
+        ob_start();
+        imagepng($im, null, 6);
+        $pngData = ob_get_clean();
+        imagedestroy($im);
+
+        $filenameBase = 'Certificate-' . sanitize_file_name($student_name);
+        $format = isset($_GET['format']) ? $_GET['format'] : 'png';
         
+        // Try PDF generation via Imagick ONLY if requested
+        if ($format === 'pdf' && class_exists('Imagick')) {
+            try {
+                $pdf = new Imagick();
+                $pdf->readImageBlob($pngData);
+                $pdf->setImageFormat('pdf');
+                
+                // Set page size to A4 Landscape (roughly matching our ratio)
+                // 3508x2480 matches A4 @ 300dpi directly
+                
+                header('Content-Type: application/pdf');
+                header('Content-Disposition: attachment; filename="' . $filenameBase . '.pdf"');
+                header('Cache-Control: no-cache, must-revalidate');
+                header('Expires: 0');
+                
+                echo $pdf->getImageBlob();
+                $pdf->clear();
+                $pdf->destroy();
+                exit;
+                
+            } catch (Exception $e) {
+                error_log("KR LMS PDF Generation Failed: " . $e->getMessage());
+                // Fallback to PNG below if PDF fails
+            }
+        }
+        
+        // Default: PNG output (for preview or fallback)
         header('Content-Type: image/png');
-        header('Content-Disposition: inline; filename="certificate-' . $id . '.png"');
+        if ($format === 'pdf') {
+             // If they asked for PDF but we failed, force download as PNG
+             header('Content-Disposition: attachment; filename="' . $filenameBase . '.png"');
+        } else {
+             // For preview/img tag, inline is better, or attachment if direct
+             // Let's use inline for preview usage (format=png)
+             header('Content-Disposition: inline; filename="' . $filenameBase . '.png"');
+        }
+        
         header('Cache-Control: no-cache, must-revalidate');
         header('Expires: 0');
         
-        imagepng($im, null, 6);
-        imagedestroy($im);
+        echo $pngData;
         exit;
     }
 }

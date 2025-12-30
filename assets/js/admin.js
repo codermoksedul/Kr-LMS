@@ -44,7 +44,29 @@ jQuery(function($){
         let fname = $('#cb-father-name').val();
         let mname = $('#cb-mother-name').val();
         let batch = $('#cb-batch').val();
-        let dates = $('#cb-date-range').val();
+        
+        // Date Logic
+        let dStart = $('#cb-date-start').val();
+        let dEnd   = $('#cb-date-end').val();
+        let formattedDate = "";
+
+        const monthNames = ["January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
+
+        function formatDate(dStr) {
+            if(!dStr) return "";
+            let d = new Date(dStr);
+            return d.getDate() + ' ' + monthNames[d.getMonth()] + ', ' + d.getFullYear();
+        }
+
+        if(dStart && dEnd) {
+            formattedDate = formatDate(dStart) + " to " + formatDate(dEnd);
+        } else if (dStart) {
+            formattedDate = formatDate(dStart); // Fallback single date
+        }
+        
+        let dates = formattedDate;
 
         if(!uid || !cid) {
             Swal.fire('Missing Data', 'Please select both student and course.', 'warning');
