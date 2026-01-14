@@ -2,14 +2,14 @@
 /**
  * Plugin Name: KR LMS
  * Description: KR LMS Certificate System with search, AJAX actions, and high-quality PNG download.
- * Version: 3.1
+ * Version: 3.2
  * Author: Moksedul
  */
 
 if (!defined('ABSPATH')) exit;
 
 // Constants
-define('KR_LMS_VERSION', '3.1');
+define('KR_LMS_VERSION', '3.2');
 define('KR_LMS_PATH', plugin_dir_path(__FILE__));
 define('KR_LMS_URL', plugin_dir_url(__FILE__));
 
@@ -28,6 +28,7 @@ require_once KR_LMS_PATH . 'includes/class-kr-lms-admin.php';
 require_once KR_LMS_PATH . 'includes/class-kr-lms-ajax.php';
 require_once KR_LMS_PATH . 'includes/class-kr-lms-generator.php';
 require_once KR_LMS_PATH . 'includes/class-kr-lms-shortcode.php';
+require_once KR_LMS_PATH . 'includes/class-kr-lms-profile.php';
 
 // Main Class
 class KR_LMS {
@@ -41,6 +42,7 @@ class KR_LMS {
         new KR_LMS_AJAX();
         new KR_LMS_Generator();
         new KR_LMS_Shortcode();
+        new KR_LMS_Profile();
     }
 }
 

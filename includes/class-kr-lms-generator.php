@@ -169,27 +169,20 @@ class KR_LMS_Generator {
         $date_range = isset($meta['date_range']) ? $meta['date_range'] : '28 May, 2024 to 05 December, 2024';
         $grade = isset($meta['grade']) ? $meta['grade'] : 'A';
         
-        // Font paths - Fix for Windows/GD
-        // Using System Fonts because custom fonts are incompatible with this PHP/GD setup
-        $fontRegular = 'C:/Windows/Fonts/arial.ttf';
-        $fontBold    = 'C:/Windows/Fonts/arialbd.ttf';
+        // Font Settings: Use Local Fonts
+        // Expects: assets/fonts/arial.ttf inside the plugin folder
+        $fontPath = KR_LMS_PATH . 'assets/fonts/';
+        $fontRegular = $fontPath . 'arial.ttf';
+        $fontBold    = $fontPath . 'arialbd.ttf';
         
-        // Helper function to draw text with fallback
+        // Helper function to draw text
         $drawText = function($im, $size, $x, $y, $color, $font, $text) use ($red) {
-            // Check if font exists
             if (file_exists($font)) {
-                try {
-                    $bbox = @imagettftext($im, $size, 0, $x, $y, $color, $font, $text);
-                    if ($bbox !== false) return;
-                } catch (Exception $e) {
-                    error_log("KR LMS Font Exception: " . $e->getMessage());
-                }
+                @imagettftext($im, $size, 0, $x, $y, $color, $font, $text);
+            } else {
+                // Warning: Font missing (Result will be tiny text)
+                imagestring($im, 5, $x, $y - ($size), $text, $color);
             }
-            
-            // Fallback to built-in font (1-5) if TTF fails
-            $builtinFont = 5; 
-            $y_adj = $y - ($size * 1.2); 
-            imagestring($im, $builtinFont, $x, $y_adj, $text, $color);
         };
         
         // Text positioning - Calibrated for 3508x2480px A4 Landscape

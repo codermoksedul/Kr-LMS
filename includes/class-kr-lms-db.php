@@ -33,12 +33,27 @@ class KR_LMS_DB {
             KEY course_id (course_id)
         ) $charset;";
 
+        $table_apps = $wpdb->prefix . "kr_cert_apps";
+        $sql3 = "CREATE TABLE $table_apps (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id BIGINT UNSIGNED NOT NULL,
+            course_id BIGINT UNSIGNED NOT NULL,
+            status VARCHAR(20) NOT NULL DEFAULT 'pending',
+            applied_at DATETIME NOT NULL,
+            updated_at DATETIME NOT NULL,
+            PRIMARY KEY(id),
+            KEY user_id (user_id),
+            KEY course_id (course_id),
+            KEY status (status)
+        ) $charset;";
+
         require_once ABSPATH . "wp-admin/includes/upgrade.php";
         
         // Output Buffering to prevent any unexpected output during activation
         ob_start();
         dbDelta($sql1);
         dbDelta($sql2);
+        dbDelta($sql3);
         ob_end_clean();
     }
 }
