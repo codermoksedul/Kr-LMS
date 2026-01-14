@@ -39,6 +39,7 @@ class KR_LMS_DB {
             user_id BIGINT UNSIGNED NOT NULL,
             course_id BIGINT UNSIGNED NOT NULL,
             status VARCHAR(20) NOT NULL DEFAULT 'pending',
+            application_data LONGTEXT NULL,
             applied_at DATETIME NOT NULL,
             updated_at DATETIME NOT NULL,
             PRIMARY KEY(id),

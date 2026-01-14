@@ -284,4 +284,146 @@ jQuery(function($){
             }
         });
     });
+    // --- Application Page Logic ---
+    const $viewAppModal = $('#app-view-modal');
+    const $issueAppModal = $('#app-issue-modal');
+
+    // Delete Application
+    $(document).on('click', '.app-delete-btn', function(){
+        let id = $(this).data('id');
+        let $row = $(this).closest('tr');
+
+        Swal.fire({
+            title: 'Delete this application?',
+            text: 'This action cannot be undone.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            confirmButtonText: 'Yes, delete it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post(ajaxurl, {
+                    action: 'kr_delete_app',
+                    id: id
+                }, function(res){
+                    if(res.success) {
+                        $row.fadeOut(300, function(){ $(this).remove(); });
+                        Swal.fire('Deleted', 'Application removed.', 'success');
+                    } else {
+                        Swal.fire('Error', 'Could not delete.', 'error');
+                    }
+                });
+            }
+        });
+    });
+
+    // 1. View Details
+    $(document).on('click', '.app-view-btn', function(){
+        let btn = $(this);
+        // Using explicit data attributes
+        let html = `
+            <table class="cb-table" style="margin:0;">
+                <tr><td><strong>Father's Name:</strong></td><td>${btn.data('father') || '-'}</td></tr>
+                <tr><td><strong>Mother's Name:</strong></td><td>${btn.data('mother') || '-'}</td></tr>
+                <tr><td><strong>Start Date:</strong></td><td>${btn.data('start') || '-'}</td></tr>
+                <tr><td><strong>End Date:</strong></td><td>${btn.data('end') || '-'}</td></tr>
+                <tr><td><strong>Project URL:</strong></td><td>${btn.data('url') ? `<a href="${btn.data('url')}" target="_blank">${btn.data('url')}</a>` : '-'}</td></tr>
+            </table>
+        `;
+        $('#app-view-content').html(html);
+        $viewAppModal.fadeIn(200);
+    });
+    
+    $('#app-view-close, .cb-modal-backdrop').click(() => $viewAppModal.fadeOut(200));
+
+    // 2. Approve & Issue Modal
+    $(document).on('click', '.app-approve-btn', function(){
+        let btn = $(this);
+
+        // Fill Readonly / Hidden
+        $('#issue-app-id').val(btn.data('appid'));
+        $('#issue-user-id').val(btn.data('uid'));
+        $('#issue-course-id').val(btn.data('cid'));
+        
+        // Visuals
+        $('#issue-user-display').val(btn.data('uname'));
+        $('#issue-course-display').val(btn.data('cname'));
+
+        // Fill Form from App Data (Individual Attributes)
+        $('#issue-father').val(btn.data('father') || '');
+        $('#issue-mother').val(btn.data('mother') || '');
+        $('#issue-url').val(btn.data('url') || '');
+        
+        // Date Logic from App
+        $('#issue-start').val(btn.data('start') || '');
+        $('#issue-end').val(btn.data('end') || '');
+        
+        // Defaults
+        $('#issue-grade').val('A');
+        $('#issue-batch').val('Batch 1');
+
+        $issueAppModal.fadeIn(200);
+    });
+
+    $('#issue-close, #issue-cancel').click(() => $issueAppModal.fadeOut(200));
+
+    // 3. Submit Issue
+    $('#issue-save').click(function(){
+        let btn = $(this);
+        let appId   = $('#issue-app-id').val();
+        let uid     = $('#issue-user-id').val();
+        let cid     = $('#issue-course-id').val();
+        
+        let batch   = $('#issue-batch').val();
+        let grade   = $('#issue-grade').val();
+        let father  = $('#issue-father').val();
+        let mother  = $('#issue-mother').val();
+        let url     = $('#issue-url').val();
+        
+        let dStart  = $('#issue-start').val();
+        let dEnd    = $('#issue-end').val();
+
+        if(!grade || !batch) {
+             Swal.fire('Error', 'Grade and Batch are required.', 'warning');
+             return;
+        }
+
+        // Format Date Range
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun","Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        function fmt(dStr) {
+            if(!dStr) return "";
+            let d = new Date(dStr);
+            return d.getDate() + ' ' + monthNames[d.getMonth()] + ', ' + d.getFullYear();
+        }
+        let dateRange = "";
+        if(dStart && dEnd) dateRange = fmt(dStart) + " to " + fmt(dEnd);
+        else if(dStart) dateRange = fmt(dStart);
+
+        btn.prop('disabled', true).text('Generating...');
+
+        $.post(ajaxurl, {
+            action: 'cb_generate_certificate',
+            app_id: appId, // Triggers auto-approve
+            user_id: uid,
+            course_id: cid,
+            grade: grade,
+            batch: batch,
+            father_name: father,
+            mother_name: mother,
+            project_url: url,
+            date_range: dateRange,
+            date_start: dStart,
+            date_end: dEnd
+        }, function(res){
+            if(res.success) {
+                $issueAppModal.fadeOut();
+                Swal.fire('Success', 'Certificate Issued & Application Approved!', 'success')
+                    .then(() => location.reload());
+            } else {
+                Swal.fire('Error', res.message || 'Failed.', 'error');
+                btn.prop('disabled', false).text('Issue Certificate');
+            }
+        });
+    });
+
 });

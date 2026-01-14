@@ -268,7 +268,9 @@
 
 /* Modal */
 #cb-modal,
-#lb-modal {
+#lb-modal,
+#app-view-modal,
+#app-issue-modal {
   display: none;
   position: fixed;
   inset: 0;

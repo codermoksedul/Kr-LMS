@@ -37,6 +37,22 @@ class KR_LMS_Admin {
             "kr-lms-leaderboard",
             [$this, 'page_leaderboard']
         );
+        // Submenu: Applications
+        global $wpdb;
+        $count = $wpdb->get_var("SELECT COUNT(id) FROM {$wpdb->prefix}kr_cert_apps WHERE status='pending'");
+        $menu_title = "Applications";
+        if($count > 0) {
+            $menu_title .= " <span class='kr-pending-count'>{$count}</span>";
+        }
+
+        add_submenu_page(
+            "kr-lms",
+            "Applications",
+            $menu_title,
+            "manage_options",
+            "kr-lms-applications",
+            [$this, 'page_applications']
+        );
         // Submenu: Shortcodes
         add_submenu_page(
             "kr-lms",
@@ -49,12 +65,34 @@ class KR_LMS_Admin {
     }
 
     public function scripts($hook) {
-        // Enqueue on all plugin pages
-        if (strpos($hook, 'kr-lms') === false) return;
-
-        wp_enqueue_style('kr-lms-admin-css', KR_LMS_ASSETS . 'css/admin.css', [], KR_LMS_VERSION);
-        wp_enqueue_script('sweetalert2', 'https://cdn.jsdelivr.net/npm/sweetalert2@11', [], null);
-        wp_enqueue_script('kr-lms-admin-js', KR_LMS_ASSETS . 'js/admin.js', ['jquery'], KR_LMS_VERSION, true);
+            if (strpos($hook, 'kr-lms') === false) return;
+        
+        wp_enqueue_script('jquery');
+        wp_enqueue_style('cb-admin-css', plugin_dir_url(__DIR__) . 'assets/css/admin.css', [], time());
+        wp_enqueue_script('cb-admin-js', plugin_dir_url(__DIR__) . 'assets/js/admin.js', ['jquery'], time(), true);
+        
+        // SweetAlert2 (CDN for simplicity)
+        wp_enqueue_style('swal2-css', 'https://cdn.jsdelivr.net/npm/@sweetalert2/theme-bootstrap-4/bootstrap-4.css');
+        wp_enqueue_script('swal2-js', 'https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.js', [], null, true);
+        
+        // CSS for Menu Badge
+        wp_add_inline_style('admin-menu', '
+            .kr-pending-count {
+                display: inline-block;
+                vertical-align: top;
+                margin: 1px 0 0 2px;
+                padding: 0 6px;
+                min-width: 18px;
+                height: 18px;
+                border-radius: 9px;
+                background-color: #d63638;
+                color: #fff;
+                font-size: 11px;
+                line-height: 18px;
+                text-align: center;
+                font-weight: 600;
+            }
+        ');
     }
 
     public function page() {
@@ -505,6 +543,289 @@ class KR_LMS_Admin {
                 <div class="cb-modal-footer">
                     <button id="lb-cancel" class="cb-btn cb-btn-outline">Cancel</button>
                     <button id="lb-save" class="cb-btn cb-btn-primary">Save Entry</button>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+
+    public function page_applications() {
+        global $wpdb;
+        $table_apps = $wpdb->prefix . "kr_cert_apps";
+        $table_cert = $wpdb->prefix . "certificates";
+        $users = $wpdb->users;
+        $posts = $wpdb->posts;
+
+        // --- Handle GET Actions (Legacy/Simple interactions) ---
+        if (isset($_GET['action'], $_GET['id'], $_GET['_wpnonce'])) {
+            $action = $_GET['action']; // 'kr_reject' only (Approve handled via AJAX now)
+            $id = intval($_GET['id']);
+            
+            if (wp_verify_nonce($_GET['_wpnonce'], $action . '_' . $id)) {
+                if ($action === 'kr_reject') {
+                    $wpdb->update($table_apps, ['status' => 'rejected', 'updated_at' => current_time('mysql')], ['id' => $id]);
+                    echo '<div class="notice notice-info is-dismissible"><p>Application rejected.</p></div>';
+                }
+            }
+        }
+
+        // --- Search & Pagination ---
+        $search = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
+        $paged = isset($_GET['paged']) ? max(1, intval($_GET['paged'])) : 1;
+        $limit = 10;
+        $offset = ($paged - 1) * $limit;
+
+        $where_sql = "WHERE 1=1";
+        if (!empty($search)) {
+            $where_sql .= $wpdb->prepare(
+                " AND (
+                    u.display_name LIKE %s OR
+                    u.user_email LIKE %s OR
+                    p.post_title LIKE %s
+                )",
+                '%' . $search . '%', '%' . $search . '%', '%' . $search . '%'
+            );
+        }
+
+        $total_items = $wpdb->get_var("
+            SELECT COUNT(a.id) FROM $table_apps a
+            LEFT JOIN $users u ON a.user_id = u.ID
+            LEFT JOIN $posts p ON a.course_id = p.ID
+            $where_sql
+        ");
+        
+        $items = $wpdb->get_results($wpdb->prepare("
+            SELECT a.*, u.display_name, u.user_email, p.post_title as course_title
+            FROM $table_apps a
+            LEFT JOIN $users u ON a.user_id = u.ID
+            LEFT JOIN $posts p ON a.course_id = p.ID
+            $where_sql
+            ORDER BY FIELD(a.status, 'pending', 'approved', 'rejected'), a.applied_at ASC
+            LIMIT %d OFFSET %d
+        ", $limit, $offset));
+
+        $total_pages = ceil($total_items / $limit);
+        $base_url = menu_page_url('kr-lms-applications', false);
+        ?>
+        <div class="wrap cb-wrapper">
+             <div class="cb-header">
+                <div>
+                    <h1 class="wp-heading-inline">Certificate Applications</h1>
+                    <p class="cb-subtitle">Review and manage student applications.</p>
+                </div>
+            </div>
+
+            <div class="cb-toolbar">
+                <form method="get" action="">
+                    <input type="hidden" name="page" value="kr-lms-applications">
+                    <div class="cb-search-box">
+                        <span class="dashicons dashicons-search cb-search-icon"></span>
+                        <input type="text" name="s" value="<?php echo esc_attr($search); ?>" placeholder="Search student or course..." class="cb-search-input">
+                        <button type="submit" class="cb-search-btn">Search</button>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="cb-card">
+                 <?php if (empty($items)): ?>
+                    <div class="cb-empty-state">
+                        <span class="dashicons dashicons-clipboard" style="font-size:48px; color:#cbd5e1;"></span>
+                        <h3>No applications found.</h3>
+                        <?php if ($search): ?>
+                             <a href="<?php echo $base_url; ?>" class="cb-btn cb-btn-outline">Clear Search</a>
+                        <?php endif; ?>
+                    </div>
+                <?php else: ?>
+                    <table class="cb-table">
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Course</th>
+                                <th>Data</th>
+                                <th>Status</th>
+                                <th>Applied At</th>
+                                <th style="text-align:right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($items as $item): 
+                            $app_data = json_decode($item->application_data, true) ?: [];
+                            $has_data = !empty($app_data);
+                            $json_attr = esc_attr(json_encode($app_data));
+                        ?>
+                            <tr>
+                                <td>
+                                    <div class="cb-user-cell">
+                                        <div class="cb-avatar"><?php echo strtoupper(substr($item->display_name, 0, 1)); ?></div>
+                                        <div>
+                                            <div class="cb-user-name"><?php echo esc_html($item->display_name); ?></div>
+                                            <div class="cb-user-email"><?php echo esc_html($item->user_email); ?></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><?php echo esc_html($item->course_title); ?></td>
+                                <td>
+                                    <?php if($has_data): ?>
+                                        <button type="button" class="button button-small app-view-btn" 
+                                            data-father="<?php echo esc_attr($app_data['father_name'] ?? ''); ?>"
+                                            data-mother="<?php echo esc_attr($app_data['mother_name'] ?? ''); ?>"
+                                            data-start="<?php echo esc_attr($app_data['start_date'] ?? ''); ?>"
+                                            data-end="<?php echo esc_attr($app_data['end_date'] ?? ''); ?>"
+                                            data-url="<?php echo esc_url($app_data['project_url'] ?? ''); ?>"
+                                        >
+                                            <span class="dashicons dashicons-visibility" style="margin-top:3px; font-size:16px;"></span> View Details
+                                        </button>
+                                    <?php else: ?>
+                                        <span style="color:#ccc;">-</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php 
+                                    $color = 'gray';
+                                    if($item->status=='approved') $color='green';
+                                    if($item->status=='rejected') $color='red';
+                                    if($item->status=='pending') $color='#d97706';
+                                    ?>
+                                    <span class="cb-badge" style="background:<?php echo $color; ?>; color:#fff; text-transform:capitalize;">
+                                        <?php echo $item->status; ?>
+                                    </span>
+                                </td>
+                                <td><?php echo date('Y-m-d', strtotime($item->applied_at)); ?></td>
+                                <td style="text-align:right;">
+                                    <div style="display:flex; gap:5px; justify-content:flex-end; align-items:center;">
+                                        
+                                        <?php if($item->status == 'pending' || $item->status == 'rejected'): ?>
+                                            <button type="button" class="button button-primary app-approve-btn"
+                                                data-appid="<?php echo $item->id; ?>"
+                                                data-uid="<?php echo $item->user_id; ?>"
+                                                data-uname="<?php echo esc_attr($item->display_name); ?>"
+                                                data-cid="<?php echo $item->course_id; ?>"
+                                                data-cname="<?php echo esc_attr($item->course_title); ?>"
+                                                
+                                                data-father="<?php echo esc_attr($app_data['father_name'] ?? ''); ?>"
+                                                data-mother="<?php echo esc_attr($app_data['mother_name'] ?? ''); ?>"
+                                                data-start="<?php echo esc_attr($app_data['start_date'] ?? ''); ?>"
+                                                data-end="<?php echo esc_attr($app_data['end_date'] ?? ''); ?>"
+                                                data-url="<?php echo esc_url($app_data['project_url'] ?? ''); ?>"
+                                            >Approve</button>
+                                        <?php endif; ?>
+
+                                        <?php if($item->status == 'pending'): ?>
+                                            <a href="<?php echo wp_nonce_url(add_query_arg(['action'=>'kr_reject', 'id'=>$item->id]), 'kr_reject_'.$item->id); ?>" 
+                                            class="button button-secondary" 
+                                            onclick="return confirm('Reject this application?');" 
+                                            style="color:#d63638; border-color:#d63638;">Reject</a>
+                                        <?php endif; ?>
+
+                                        <!-- Delete Action (Always available) -->
+                                        <button type="button" class="button button-link app-delete-btn" 
+                                            data-id="<?php echo $item->id; ?>" 
+                                            style="color:#a0a0a0; margin-left:5px;" title="Delete Application">
+                                            <span class="dashicons dashicons-trash"></span>
+                                        </button>
+
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php endif; ?>
+            </div>
+             <div class="cb-footer">
+                <div class="cb-stats">
+                    Showing <strong><?php echo count($items); ?></strong> of <strong><?php echo $total_items; ?></strong>
+                </div>
+                <?php if ($total_pages > 1): ?>
+                    <div class="cb-pagination">
+                        <?php echo paginate_links([
+                            'base' => add_query_arg('paged', '%#%'),
+                            'format' => '',
+                            'total' => $total_pages,
+                            'current' => $paged
+                        ]); ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- MODAL 1: VIEW DETAILS -->
+        <div id="app-view-modal" style="display:none;">
+            <div class="cb-modal-backdrop"></div>
+            <div class="cb-modal-content" style="max-width:500px;">
+                <div class="cb-modal-header">
+                    <h2>Application Details</h2>
+                    <button id="app-view-close" class="cb-close-icon">&times;</button>
+                </div>
+                <div class="cb-modal-body" id="app-view-content" style="font-size:14px; line-height:1.6;">
+                    <!-- Content via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL 2: ISSUE CERTIFICATE (APPROVE) -->
+        <div id="app-issue-modal" style="display:none;">
+            <div class="cb-modal-backdrop"></div>
+            <div class="cb-modal-content">
+                <div class="cb-modal-header">
+                    <h2>Issue Certificate</h2>
+                    <button id="issue-close" class="cb-close-icon">&times;</button>
+                </div>
+                <div class="cb-modal-body">
+                    <p style="margin-bottom:20px; color:#666;">Review details before approving the application.</p>
+                    
+                    <input type="hidden" id="issue-app-id">
+                    <input type="hidden" id="issue-user-id">
+                    <input type="hidden" id="issue-course-id">
+
+                    <div class="cb-grid-2">
+                        <div class="cb-form-group cb-full-width">
+                            <label>Student</label>
+                            <input type="text" id="issue-user-display" class="cb-input" readonly style="background:#f0f0f1;">
+                        </div>
+                        <div class="cb-form-group cb-full-width">
+                            <label>Course</label>
+                            <input type="text" id="issue-course-display" class="cb-input" readonly style="background:#f0f0f1;">
+                        </div>
+
+                        <div class="cb-form-group">
+                            <label>Father's Name</label>
+                            <input type="text" id="issue-father" class="cb-input">
+                        </div>
+                        <div class="cb-form-group">
+                            <label>Mother's Name</label>
+                            <input type="text" id="issue-mother" class="cb-input">
+                        </div>
+
+                        <div class="cb-form-group">
+                            <label>Batch</label>
+                            <input type="text" id="issue-batch" class="cb-input" value="Batch 1">
+                        </div>
+                        <div class="cb-form-group">
+                            <label>Grade</label>
+                            <input type="text" id="issue-grade" class="cb-input" value="A">
+                        </div>
+
+                        <div class="cb-grid-2 cb-full-width" style="grid-column: 1 / -1; display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+                            <div class="cb-form-group">
+                                <label>Start Date</label>
+                                <input type="date" id="issue-start" class="cb-input">
+                            </div>
+                            <div class="cb-form-group">
+                                <label>End Date</label>
+                                <input type="date" id="issue-end" class="cb-input">
+                            </div>
+                        </div>
+
+                        <div class="cb-form-group cb-full-width">
+                            <label>Project / Portfolio URL</label>
+                            <input type="url" id="issue-url" class="cb-input">
+                        </div>
+                    </div>
+                </div>
+                <div class="cb-modal-footer">
+                    <button id="issue-cancel" class="cb-btn cb-btn-outline">Cancel</button>
+                    <button id="issue-save" class="cb-btn cb-btn-primary">Generate & Approve</button>
                 </div>
             </div>
         </div>

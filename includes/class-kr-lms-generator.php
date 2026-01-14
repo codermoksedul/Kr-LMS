@@ -247,6 +247,8 @@ class KR_LMS_Generator {
                 
                 // Set page size to A4 Landscape (roughly matching our ratio)
                 // 3508x2480 matches A4 @ 300dpi directly
+                $pdf->setImageUnits(imagick::RESOLUTION_PIXELSPERINCH);
+                $pdf->setImageResolution(300, 300);
                 
                 header('Content-Type: application/pdf');
                 header('Content-Disposition: attachment; filename="' . $filenameBase . '.pdf"');
